@@ -10,6 +10,53 @@ function Confirm-Action {
     return $answer -match '^(y|yes)$'
 }
 
+function Get-SubscriptionChoice {
+    param(
+        [string]$Prompt,
+        [string]$DefaultValue = ""
+    )
+
+    $subscriptions = Get-AzSubscription | Sort-Object Name
+    if (-not $subscriptions) {
+        throw "No Azure subscriptions were found for this account."
+    }
+
+    Write-Host ""
+    Write-Host "Available subscriptions:"
+    for ($i = 0; $i -lt $subscriptions.Count; $i++) {
+        $sub = $subscriptions[$i]
+        Write-Host ("[{0}] {1} ({2})" -f $i, $sub.Name, $sub.Id)
+    }
+
+    if ([string]::IsNullOrWhiteSpace($DefaultValue)) {
+        $input = Read-Host $Prompt
+    }
+    else {
+        $input = Read-Host "$Prompt [$DefaultValue]"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($input)) {
+        if ([string]::IsNullOrWhiteSpace($DefaultValue)) {
+            throw "A subscription selection is required."
+        }
+        return $DefaultValue
+    }
+
+    if ($input -match '^\d+$') {
+        $index = [int]$input
+        if ($index -ge 0 -and $index -lt $subscriptions.Count) {
+            return $subscriptions[$index].Id
+        }
+    }
+
+    $match = $subscriptions | Where-Object { $_.Name -eq $input -or $_.Id -eq $input }
+    if ($match) {
+        return $match[0].Id
+    }
+
+    throw "Subscription '$input' was not found. Use a number from the list or an exact subscription name/ID."
+}
+
 function Get-ModeSelection {
     param([string]$SourceRG, [string]$SourceSub)
 
@@ -99,14 +146,14 @@ function Move-Resources {
 Write-Host "Azure Resource Location Migration Utility"
 Write-Host "--------------------------------------"
 
-$SourceSub = Read-Host "Enter SOURCE subscription ID or name"
-$SourceRG  = Read-Host "Enter SOURCE resource group name"
-$DestSub   = Read-Host "Enter DESTINATION subscription ID or name"
-$DestRG    = Read-Host "Enter DESTINATION resource group name"
-
 if (-not (Get-AzContext)) {
     Connect-AzAccount
 }
+
+$SourceSub = Get-SubscriptionChoice -Prompt "Select SOURCE subscription"
+$SourceRG  = Read-Host "Enter SOURCE resource group name"
+$DestSub   = Get-SubscriptionChoice -Prompt "Select DESTINATION subscription"
+$DestRG    = Read-Host "Enter DESTINATION resource group name"
 
 Set-AzContext -SubscriptionId $SourceSub | Out-Null
 

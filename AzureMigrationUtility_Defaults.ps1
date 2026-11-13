@@ -14,12 +14,61 @@ function Ask-Defaulted {
     return $value
 }
 
+function Get-SubscriptionChoice {
+    param(
+        [string]$Prompt,
+        [string]$DefaultValue = ""
+    )
+
+    $subscriptions = Get-AzSubscription | Sort-Object Name
+    if (-not $subscriptions) {
+        throw "No Azure subscriptions were found for this account."
+    }
+
+    Write-Host ""
+    Write-Host "Available subscriptions:"
+    for ($i = 0; $i -lt $subscriptions.Count; $i++) {
+        $sub = $subscriptions[$i]
+        Write-Host ("[{0}] {1} ({2})" -f $i, $sub.Name, $sub.Id)
+    }
+
+    if ([string]::IsNullOrWhiteSpace($DefaultValue)) {
+        $input = Read-Host $Prompt
+    }
+    else {
+        $input = Read-Host "$Prompt [$DefaultValue]"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($input)) {
+        if ([string]::IsNullOrWhiteSpace($DefaultValue)) {
+            throw "A subscription selection is required."
+        }
+        return $DefaultValue
+    }
+
+    if ($input -match '^\d+$') {
+        $index = [int]$input
+        if ($index -ge 0 -and $index -lt $subscriptions.Count) {
+            return $subscriptions[$index].Id
+        }
+    }
+
+    $match = $subscriptions | Where-Object { $_.Name -eq $input -or $_.Id -eq $input }
+    if ($match) {
+        return $match[0].Id
+    }
+
+    throw "Subscription '$input' was not found. Use a number from the list or an exact subscription name/ID."
+}
+
 Write-Host "Azure Migration Utility (defaults mode)"
 Write-Host "--------------------------------------"
 
-$SourceSub = Ask-Defaulted "Source subscription" "<source-subscription-id>"
+if (-not (Get-AzContext)) { Connect-AzAccount }
+
+$SourceSub = Get-SubscriptionChoice -Prompt "Select source subscription" -DefaultValue "<source-subscription-id>"
 $SourceRG  = Ask-Defaulted "Source resource group" "<source-resource-group>"
-$DestSub   = Ask-Defaulted "Destination subscription" "<destination-subscription-id>"
+$DestSub   = Get-SubscriptionChoice -Prompt "Select destination subscription" -DefaultValue "<destination-subscription-id>"
 $DestRG    = Ask-Defaulted "Destination resource group" "<destination-resource-group>"
 $Mode      = Ask-Defaulted "Move mode [All/Selected/Preview]" "All"
 
