@@ -1,0 +1,11 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# PowerShell/IDE
+.vscode/
+*.ps1xml
+*.log
+
+# Misc
+*.tmp

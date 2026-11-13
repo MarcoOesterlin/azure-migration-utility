@@ -23,3 +23,8 @@ Run in Azure Cloud Shell or PowerShell:
 ## Notes
 - This script is intentionally conservative and requires confirmation before destructive actions.
 - Test it in a non-production environment first.
+
+## Included scripts
+
+- `AzureMigrationUtility_Defaults.ps1` — simpler defaults-based version for non-coders
+- `scripts/FabricCapacityRename.ps1` — Fabric rename helper
