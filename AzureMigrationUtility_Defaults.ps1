@@ -61,15 +61,73 @@ function Get-SubscriptionChoice {
     throw "Subscription '$input' was not found. Use a number from the list or an exact subscription name/ID."
 }
 
+function Get-ResourceGroupChoice {
+    param(
+        [string]$SubscriptionId,
+        [string]$Prompt,
+        [string]$DefaultValue = ""
+    )
+
+    $resourceGroups = Get-AzResourceGroup -SubscriptionId $SubscriptionId | Sort-Object ResourceGroupName
+    Write-Host ""
+    Write-Host "Available resource groups in subscription $SubscriptionId:"
+    if ($resourceGroups) {
+        for ($i = 0; $i -lt $resourceGroups.Count; $i++) {
+            $rg = $resourceGroups[$i]
+            Write-Host ("[{0}] {1}" -f $i, $rg.ResourceGroupName)
+        }
+        Write-Host "[n] Create a new resource group"
+    }
+    else {
+        Write-Host "No resource groups found in this subscription."
+        Write-Host "[n] Create a new resource group"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($DefaultValue)) {
+        $input = Read-Host $Prompt
+    }
+    else {
+        $input = Read-Host "$Prompt [$DefaultValue]"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($input)) {
+        if ([string]::IsNullOrWhiteSpace($DefaultValue)) { return "" }
+        return $DefaultValue
+    }
+
+    if ($input -match '^\d+$') {
+        $index = [int]$input
+        if ($resourceGroups -and $index -ge 0 -and $index -lt $resourceGroups.Count) {
+            return $resourceGroups[$index].ResourceGroupName
+        }
+    }
+
+    if ($input -eq 'n' -or $input -eq 'N') {
+        $newName = Read-Host "Enter the name for the new resource group"
+        if ([string]::IsNullOrWhiteSpace($newName)) {
+            throw "A resource group name is required."
+        }
+        New-AzResourceGroup -Name $newName -Location (Get-AzLocation | Sort-Object Location | Select-Object -First 1).Location -SubscriptionId $SubscriptionId | Out-Null
+        return $newName
+    }
+
+    $match = $resourceGroups | Where-Object { $_.ResourceGroupName -eq $input }
+    if ($match) {
+        return $match[0].ResourceGroupName
+    }
+
+    throw "Resource group '$input' was not found. Use a number, choose [n] to create a new one, or type an existing name."
+}
+
 Write-Host "Azure Migration Utility (defaults mode)"
 Write-Host "--------------------------------------"
 
 if (-not (Get-AzContext)) { Connect-AzAccount }
 
 $SourceSub = Get-SubscriptionChoice -Prompt "Select source subscription" -DefaultValue "<source-subscription-id>"
-$SourceRG  = Ask-Defaulted "Source resource group" "<source-resource-group>"
+$SourceRG  = Get-ResourceGroupChoice -SubscriptionId $SourceSub -Prompt "Select source resource group" -DefaultValue "<source-resource-group>"
 $DestSub   = Get-SubscriptionChoice -Prompt "Select destination subscription" -DefaultValue "<destination-subscription-id>"
-$DestRG    = Ask-Defaulted "Destination resource group" "<destination-resource-group>"
+$DestRG    = Get-ResourceGroupChoice -SubscriptionId $DestSub -Prompt "Select destination resource group" -DefaultValue "<destination-resource-group>"
 $Mode      = Ask-Defaulted "Move mode [All/Selected/Preview]" "All"
 
 Write-Host ""
