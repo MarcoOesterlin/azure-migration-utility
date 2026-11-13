@@ -66,7 +66,7 @@ function Get-ResourceGroupChoice {
 
     $resourceGroups = Get-AzResourceGroup -SubscriptionId $SubscriptionId | Sort-Object ResourceGroupName
     Write-Host ""
-    Write-Host "Available resource groups in subscription $SubscriptionId:"
+    Write-Host "Available resource groups in subscription ${SubscriptionId}:"
     if ($resourceGroups) {
         for ($i = 0; $i -lt $resourceGroups.Count; $i++) {
             $rg = $resourceGroups[$i]
