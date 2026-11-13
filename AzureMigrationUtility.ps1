@@ -242,6 +242,13 @@ if ($selection[0] -eq "ALL") {
     $resourcesToMove = @($selection)
 }
 
+if (-not $resourcesToMove -or $resourcesToMove.Count -eq 0) {
+    Write-Host ""
+    Write-Host "No Azure resources were found in resource group '$SourceRG'."
+    Write-Host "Nothing to move. Exiting."
+    exit 0
+}
+
 Write-Host ""
 Write-Host "This will move the following resources:"
 $resourcesToMove | Select-Object Name, ResourceType | Format-Table -AutoSize

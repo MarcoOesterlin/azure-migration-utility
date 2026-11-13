@@ -176,8 +176,11 @@ if ($Mode -eq "All" -or $Mode -eq "all") {
     throw "Unsupported mode: $Mode"
 }
 
-if (-not $toMove) {
-    throw "No resources selected for move."
+if (-not $toMove -or $toMove.Count -eq 0) {
+    Write-Host ""
+    Write-Host "No Azure resources were found in resource group '$SourceRG'."
+    Write-Host "Nothing to move. Exiting."
+    exit 0
 }
 
 $moveNow = Read-Host "Move these resources now? [Y/N]"
