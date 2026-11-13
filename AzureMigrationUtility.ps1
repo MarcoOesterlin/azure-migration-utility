@@ -64,7 +64,17 @@ function Get-ResourceGroupChoice {
         [string]$DefaultValue = ""
     )
 
-    $resourceGroups = Get-AzResourceGroup -SubscriptionId $SubscriptionId | Sort-Object ResourceGroupName
+    $previousContext = Get-AzContext
+    Set-AzContext -SubscriptionId $SubscriptionId | Out-Null
+    try {
+        $resourceGroups = Get-AzResourceGroup | Sort-Object ResourceGroupName
+    }
+    finally {
+        if ($previousContext) {
+            Set-AzContext -Context $previousContext | Out-Null
+        }
+    }
+
     Write-Host ""
     Write-Host "Available resource groups in subscription ${SubscriptionId}:"
     if ($resourceGroups) {
@@ -103,7 +113,8 @@ function Get-ResourceGroupChoice {
         if ([string]::IsNullOrWhiteSpace($newName)) {
             throw "A resource group name is required."
         }
-        New-AzResourceGroup -Name $newName -Location (Get-AzLocation | Sort-Object Location | Select-Object -First 1).Location -SubscriptionId $SubscriptionId | Out-Null
+        Set-AzContext -SubscriptionId $SubscriptionId | Out-Null
+        New-AzResourceGroup -Name $newName -Location (Get-AzLocation | Sort-Object Location | Select-Object -First 1).Location | Out-Null
         return $newName
     }
 
@@ -208,10 +219,10 @@ if (-not (Get-AzContext)) {
     Connect-AzAccount
 }
 
-$SourceSub = Get-SubscriptionChoice -Prompt "Select SOURCE subscription"
-$SourceRG  = Get-ResourceGroupChoice -SubscriptionId $SourceSub -Prompt "Select SOURCE resource group"
-$DestSub   = Get-SubscriptionChoice -Prompt "Select DESTINATION subscription"
-$DestRG    = Get-ResourceGroupChoice -SubscriptionId $DestSub -Prompt "Select DESTINATION resource group"
+$SourceSub = Get-SubscriptionChoice -Prompt "Select SOURCE subscription (number or name)"
+$SourceRG  = Get-ResourceGroupChoice -SubscriptionId $SourceSub -Prompt "Select SOURCE resource group (number or name)"
+$DestSub   = Get-SubscriptionChoice -Prompt "Select DESTINATION subscription (number or name)"
+$DestRG    = Get-ResourceGroupChoice -SubscriptionId $DestSub -Prompt "Select DESTINATION resource group (number or name)"
 
 Set-AzContext -SubscriptionId $SourceSub | Out-Null
 

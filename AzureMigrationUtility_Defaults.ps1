@@ -68,7 +68,17 @@ function Get-ResourceGroupChoice {
         [string]$DefaultValue = ""
     )
 
-    $resourceGroups = Get-AzResourceGroup -SubscriptionId $SubscriptionId | Sort-Object ResourceGroupName
+    $previousContext = Get-AzContext
+    Set-AzContext -SubscriptionId $SubscriptionId | Out-Null
+    try {
+        $resourceGroups = Get-AzResourceGroup | Sort-Object ResourceGroupName
+    }
+    finally {
+        if ($previousContext) {
+            Set-AzContext -Context $previousContext | Out-Null
+        }
+    }
+
     Write-Host ""
     Write-Host "Available resource groups in subscription ${SubscriptionId}:"
     if ($resourceGroups) {
@@ -107,7 +117,8 @@ function Get-ResourceGroupChoice {
         if ([string]::IsNullOrWhiteSpace($newName)) {
             throw "A resource group name is required."
         }
-        New-AzResourceGroup -Name $newName -Location (Get-AzLocation | Sort-Object Location | Select-Object -First 1).Location -SubscriptionId $SubscriptionId | Out-Null
+        Set-AzContext -SubscriptionId $SubscriptionId | Out-Null
+        New-AzResourceGroup -Name $newName -Location (Get-AzLocation | Sort-Object Location | Select-Object -First 1).Location | Out-Null
         return $newName
     }
 
@@ -124,10 +135,10 @@ Write-Host "--------------------------------------"
 
 if (-not (Get-AzContext)) { Connect-AzAccount }
 
-$SourceSub = Get-SubscriptionChoice -Prompt "Select source subscription" -DefaultValue "<source-subscription-id>"
-$SourceRG  = Get-ResourceGroupChoice -SubscriptionId $SourceSub -Prompt "Select source resource group" -DefaultValue "<source-resource-group>"
-$DestSub   = Get-SubscriptionChoice -Prompt "Select destination subscription" -DefaultValue "<destination-subscription-id>"
-$DestRG    = Get-ResourceGroupChoice -SubscriptionId $DestSub -Prompt "Select destination resource group" -DefaultValue "<destination-resource-group>"
+$SourceSub = Get-SubscriptionChoice -Prompt "Select source subscription (number or name)" -DefaultValue "<source-subscription-id>"
+$SourceRG  = Get-ResourceGroupChoice -SubscriptionId $SourceSub -Prompt "Select source resource group (number or name)" -DefaultValue "<source-resource-group>"
+$DestSub   = Get-SubscriptionChoice -Prompt "Select destination subscription (number or name)" -DefaultValue "<destination-subscription-id>"
+$DestRG    = Get-ResourceGroupChoice -SubscriptionId $DestSub -Prompt "Select destination resource group (number or name)" -DefaultValue "<destination-resource-group>"
 $Mode      = Ask-Defaulted "Move mode [All/Selected/Preview]" "All"
 
 Write-Host ""
